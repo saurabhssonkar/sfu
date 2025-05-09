@@ -239,14 +239,110 @@ const MediaRoom = () => {
     }
   };
 
+  const toggleAudio = () => {
+    if (audioProducer) {
+      audioProducer.track.enabled = !isAudioMuted;
+      setIsAudioMuted(!isAudioMuted);
+    }
+  };
+
+  const toggleVideo = () => {
+    if (videoProducer) {
+      videoProducer.track.enabled = !isVideoOff;
+      setIsVideoOff(!isVideoOff);
+      localVideoRef.current.style.display = isVideoOff ? 'block' : 'none';
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    }
+  };
+
+  const leaveCall = () => {
+    // Clean up all media and transports
+    if (producerTransport) producerTransport.close();
+    consumerTransports.forEach(transport => {
+      transport.consumerTransport.close();
+      transport.consumer.close();
+    });
+    window.location.href = '/';
+  };
+
   return (
-    <div >
-      <h2>Room: {roomName}</h2>
-      <video ref={localVideoRef} autoPlay muted className="video" />
-      <h1 style={{color:"white"}}>---------------</h1>
-      <div ref={videoContainerRef}></div>
+    <div className="meet-container">
+      {/* Main video grid */}
+      <div className={`video-grid ${isFullscreen ? 'fullscreen' : ''}`} ref={videoContainerRef}>
+        {/* Local video */}
+        <div className={`video-tile ${activeSpeaker === 'local' ? 'active-speaker' : ''}`}>
+          <video 
+            ref={localVideoRef} 
+            autoPlay 
+            muted 
+            className="video-element"
+            onClick={() => setActiveSpeaker('local')}
+          />
+          <div className="participant-info">
+            <span className="participant-name">You</span>
+            {isAudioMuted && <span className="audio-muted-icon">🔇</span>}
+          </div>
+        </div>
+        
+        {/* Remote videos will be added here dynamically */}
+      </div>
+
+      {/* Controls bar */}
+      <div className="controls-bar">
+        <button 
+          className={`control-button ${isAudioMuted ? 'active' : ''}`}
+          onClick={toggleAudio}
+          title={isAudioMuted ? "Unmute" : "Mute"}
+        >
+          {isAudioMuted ? '🔇' : '🎤'}
+        </button>
+        
+        <button 
+          className={`control-button ${isVideoOff ? 'active' : ''}`}
+          onClick={toggleVideo}
+          title={isVideoOff ? "Turn on camera" : "Turn off camera"}
+        >
+          {isVideoOff ? '📷❌' : '📷'}
+        </button>
+        
+        <button 
+          className="control-button"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullscreen ? '⤢' : '⤡'}
+        </button>
+        
+        <button 
+          className="control-button leave-button"
+          onClick={leaveCall}
+          title="Leave call"
+        >
+          🚪 Leave
+        </button>
+      </div>
+
+      {/* Room info */}
+      <div className="room-info">
+        <span className="room-name">Room: {roomName}</span>
+        <span className="participant-count">{consumerTransports.length + 1} participants</span>
+      </div>
     </div>
   );
+
 };
 
 export default MediaRoom;
